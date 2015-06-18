@@ -1,0 +1,175 @@
+﻿<!DOCTYPE html>
+<html>
+     <head>
+     <meta charset="UTF-8" />
+     <title>サイトタイトル</title>
+     <meta name="viewport" content="width=device-width, initial-scale=1" />
+     <link rel="stylesheet" href="http://code.jquery.com/mobile/1.1.0/jquery.mobile-1.1.0.min.css" />
+     <script src="http://code.jquery.com/jquery-1.7.1.min.js"></script>
+     <script src="http://code.jquery.com/mobile/1.1.0/jquery.mobile-1.1.0.min.js"></script>
+
+
+    <!-- Bootstrap -->
+    <link href="CSS/bootstrap.min.css" rel="stylesheet">
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+
+
+
+
+<!-- jQuery Mobileによるスマートフォン用Webサイト作成入門  -->
+<!-- http://libro.tuyano.com/index3?id=619006&page=2  -->
+<!-- ログイン画面で入力したIDを次画面に引き継ぐ  -->
+    <script type="text/javascript">
+        function doAction(){
+            var userID = $('#userID').val();
+            $('#dlog_content').text('こんにちは、' + userID + 'さん');
+           
+          <!-- キャラクター用画像の配列 20150610-->
+          var masterImageList =["./img/character_grape.jpg","./img/character_lettuce.jpg","./img/character_karaage.jpg","./img/character_shortcake.jpg","./img/character_hourensou.jpg"];
+            var imageList =["./img/character_grape.jpg","./img/character_lettuce.jpg","./img/character_karaage.jpg","./img/character_shortcake.jpg","./img/character_hourensou.jpg"];
+
+
+
+
+           <!-- JSONからキャラクター情報を呼び出す 20150610 -->
+
+        //    $(window).load(function(){ ←onloadイベントのリスナ　<script>直下に置くべき
+            //Send JSON 
+                $.ajax({ 
+                    type : 'get', 
+                    //url : "https://peaceful-tundra-2847.herokuapp.com/channels/"+ today +".json", 
+                    url : "https://limitless-sands-8750.herokuapp.com/projects.json",
+                    
+                    dataType : 'JSON', 
+                    scriptCharset: 'utf-8', 
+                    success : function(data) {
+
+                        var c;
+                        $('#project_list').text("");
+                        for(var i in data){
+
+                        //modで配列の長さを処理する。
+
+
+
+                        //20150617_kawai ActionHandlerの記載に合わせて変更
+                        //var index = i % 5;
+
+                        var index =Number(data[i].id) % 5;
+
+                         c="<input type=\"image\" src=\""+imageList[index]+"\" class=\"img-responsive\"   name=\""+ data[i].id +" \" value=\""+ data[i].id +"\" onClick=\"clickIcon(value);\">" ;
+
+                         $('#project_list').append(c);
+
+
+                        }
+
+
+                    }, 
+                    error : function(data) { 
+                        alert("error:" + data); 
+                    } 
+                }); 
+ 
+
+          //  }); 
+
+           <!--ここまで(JSONからキャラクター情報を呼び出す 20150610) -->            
+            
+            
+            $.mobile.changePage("#page_character-list", {transition: "pop"});
+            
+        }
+        
+        function clickIcon(projectName){
+
+           Android.pushButton(projectName)
+           //alert("good:"+projectName);
+        
+        }
+    </script>
+<!-- ここまで(ログイン画面で入力したIDを次画面に引き継ぐ) -->
+
+
+
+
+
+
+    </head>
+    <body>
+       <div id="page_login" data-role="page">
+            <header data-role="header">
+                <h1>FoodNote</h1>
+            </header>
+            <div data-role="content">
+                <p>このページは1ページ目です。</p>
+
+
+
+<!-- jQuery Mobileによるスマートフォン用Webサイト作成入門  -->
+<!-- http://libro.tuyano.com/index3?id=619006&page=2  -->
+
+                <div data-role="fieldcontain">
+                    <label>
+                        ID:<input type="text" name="userID" id="userID" />
+                    </label>
+                </div>
+                <input type="button" value="Click" onclick="doAction(); " />
+<!--   -->
+
+
+                <video loop="true" controls="false" autoplay width="100%">
+
+                    <source src="./img/kaiten.mp4" type="video/mp4" >
+                    I'm sorry; your browser doesn't support HTML5 video.
+                    <!-- 古いブラウザで mp4 ビデオを再生するために、Flash プレイヤーを埋め込むことができます -->
+                </video>
+
+
+
+          
+            </div><!-- page_login content end   -->
+        </div><!-- page_login end  -->
+
+
+
+<!-- jQuery Mobileによるスマートフォン用Webサイト作成入門  -->
+<!-- http://libro.tuyano.com/index3?id=619006&page=2  -->
+
+       <div id="page_character-list" data-role="page">
+            <header data-role="header">
+                <h1>FoodNote</h1>
+            </header>
+            <div data-role="content">
+                <p id="dlog_content">コンテンツ。</p>
+                <p id="project_list">
+ 
+                </p>
+               
+                <a href="#page_login" data-role="button">ログイン画面へ戻る</a>
+            </div></div><!-- page_character-list content end   -->
+        </div></div><!-- page_character-list end  -->
+<!--   -->
+
+
+
+    <div id="page2" data-role="page">
+        <header data-role="header">
+            <h1>2ページ目</h1>
+        </header>
+        <div data-role="content">
+
+
+            <p>このページは2ページ目です。</p>
+            <a href="#page_login" data-role="button">1ページ目へ戻る</a>
+        </div>
+    </div>
+</body>
+</html>
