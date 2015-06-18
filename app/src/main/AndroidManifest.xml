@@ -18,7 +18,9 @@
     <android:uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <android:uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="18" /> <!-- uses-feature android:name="android.hardware.camera.front" / -->
+        android:maxSdkVersion="18" />
+
+    <!-- uses-feature android:name="android.hardware.camera.front" / -->
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
@@ -28,15 +30,20 @@
             android:name=".MainActivity"
             android:finishOnCloseSystemDialogs="true"
             android:label="@string/app_name" >
+
+        </activity>
+        <activity
+            android:name=".TalkActivity"
+            android:label="@string/title_activity_talk_acticity" >
+        </activity>
+        <activity
+            android:name=".TopScreen"
+            android:label="@string/title_activity_top_screen" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-        <activity
-            android:name=".TalkActivity"
-            android:label="@string/title_activity_talk_acticity" >
         </activity>
     </application>
 
