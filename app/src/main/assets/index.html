@@ -8,6 +8,9 @@
      <script src="http://code.jquery.com/jquery-1.7.1.min.js"></script>
      <script src="http://code.jquery.com/mobile/1.1.0/jquery.mobile-1.1.0.min.js"></script>
 
+<!-- jQuery plugin-->
+         <script type="text/javascript" src="js/jquery.transit.min.js"></script>
+
 
     <!-- Bootstrap -->
     <link href="CSS/bootstrap.min.css" rel="stylesheet">
@@ -32,10 +35,11 @@
             $('#dlog_content').text('こんにちは、' + userID + 'さん');
            
           <!-- キャラクター用画像の配列 20150610-->
-          var masterImageList =["./img/character_grape.jpg","./img/character_lettuce.jpg","./img/character_karaage.jpg","./img/character_shortcake.jpg","./img/character_hourensou.jpg"];
-            var imageList =["./img/character_grape.jpg","./img/character_lettuce.jpg","./img/character_karaage.jpg","./img/character_shortcake.jpg","./img/character_hourensou.jpg"];
+ //         var masterImageList =["./img/character_grape.jpg","./img/character_lettuce.jpg","./img/character_karaage.jpg","./img/character_shortcake.jpg","./img/character_hourensou.jpg"];
+//          var imageList =["./img/character_grape.jpg","./img/character_lettuce.jpg","./img/character_karaage.jpg","./img/character_shortcake.jpg","./img/character_hourensou.jpg"];　
 
-
+          <!-- キャラクター用画像のKeyValue配列 20150831-->
+           var masterImageKeyValueList={"Grape":"./img/character_grape.jpg","Lettuce":"./img/character_lettuce.jpg","Karaage":"./img/character_karaage.jpg","Shortcake":"./img/character_shortcake.jpg","Hourensou":"./img/character_hourensou.jpg"}
 
 
            <!-- JSONからキャラクター情報を呼び出す 20150610 -->
@@ -53,25 +57,42 @@
 
                         var c;
                         $('#project_list').text("");
+
+                        <!-- 20150622_kawai キャラクター用画像の配列をオブジェクト ここから -->
+                        //20150831_KeyValueList対応によりコメントアウト
+                        //var imageList={};
+                        //for(var i in data){
+                        //    imageList[data[i].pjname]=masterImageList[i%5];
+                        // }
+                        <!-- 20150622_kawai キャラクター用画像の配列をオブジェクト ここｍで -->
+
+                        <!-- 20150622_kawai キャラクター用画像のKeyValueList対応をオブジェクト ここから -->
+                        var imageList={};
+                        for(var i in data){
+                            imageList[data[i].pjname]=masterImageKeyValueList[data[i].pjname];
+                            if(imageList[data[i].pjname]==null){
+                            //該当するキャラがない場合はホウレンソウを表示する。
+                                imageList[data[i].pjname]=masterImageKeyValueList["Hourensou"];
+                            }
+                         }
+                        <!-- 20150622_kawai キャラクター用画像のKeyValueList対応をオブジェクト ここまで -->
+
+
+
+
+
                         for(var i in data){
 
                         //modで配列の長さを処理する。
-
-
-
                         //20150617_kawai ActionHandlerの記載に合わせて変更
                         //var index = i % 5;
 
-                        var index =Number(data[i].id) % 5;
+                        //var index =Number(data[i].id) % 5;
 
-                         c="<input type=\"image\" src=\""+imageList[index]+"\" class=\"img-responsive\"   name=\""+ data[i].id +" \" value=\""+ data[i].id +"\" onClick=\"clickIcon(value);\">" ;
+                         c="<input type=\"image\" src=\""+imageList[data[i].pjname]+"\" class=\"img-responsive\"   name=\""+ data[i].pjname +" \" value=\""+ data[i].pjname +"\" onClick=\"clickIcon(\'"+data[i].id+"\',\'"+data[i].pjname+"\',\'"+userID+"\');\">" ;
 
                          $('#project_list').append(c);
-
-
                         }
-
-
                     }, 
                     error : function(data) { 
                         alert("error:" + data); 
@@ -88,50 +109,69 @@
             
         }
         
-        function clickIcon(projectName){
+        function clickIcon(projectID,projectName,userID){
 
-           Android.pushButton(projectName)
-           //alert("good:"+projectName);
-        
+           Android.pushButton(projectID,projectName,userID);
+
         }
     </script>
 <!-- ここまで(ログイン画面で入力したIDを次画面に引き継ぐ) -->
 
 
+<!-- 20150622_kawai 画像のアニメーション用 ここから-->
 
+    <script type="text/javascript">
 
+        function onloadfanc(){
+
+            $('.box').transition({ rotate: '1080deg' }, 50000, 'Linear');
+
+        }
+    </script>
+<!-- 20150622_kawai 画像のアニメーション用 ここｍで-->
 
 
     </head>
-    <body>
+    <body onload="onloadfanc()">
+    <div class="container">
        <div id="page_login" data-role="page">
             <header data-role="header">
                 <h1>FoodNote</h1>
             </header>
             <div data-role="content">
-                <p>このページは1ページ目です。</p>
 
 
 
 <!-- jQuery Mobileによるスマートフォン用Webサイト作成入門  -->
 <!-- http://libro.tuyano.com/index3?id=619006&page=2  -->
 
-                <div data-role="fieldcontain">
+                <div data-role="fieldcontain" class="form-group">
                     <label>
-                        ID:<input type="text" name="userID" id="userID" />
+                        ID:<input type="text" name="userID" id="userID" class="form-control"/>
+
+                    <input type="button" value="Click" onclick="doAction(); " />
                     </label>
                 </div>
-                <input type="button" value="Click" onclick="doAction(); " />
-<!--   -->
 
 
 
-                <video loop="true" controls="false" autoplay width="100%">
+                <!-- Android 4.xで使えるようにするための処置-->
 
-                    <source src="./kaiten.mp4" type="video/mp4" >
-                    I'm sorry; your browser doesn't support HTML5 video.
-                    <!-- 古いブラウザで mp4 ビデオを再生するために、Flash プレイヤーを埋め込むことができます -->
-                </video>
+                <div class="box">
+                <img src="./img/wa.png" width="1200" height="800" alt="" class="img-responsive">
+                </div>
+
+
+
+
+
+                <!--5.xでないと使えない。
+                                <video loop="true" controls="false" autoplay width="100%">
+
+                                    <source src="./kaiten.mp4" type="video/mp4" >
+                                    I'm sorry; your browser doesn't support HTML5 video.
+                                    <!-- 古いブラウザで mp4 ビデオを再生するために、Flash プレイヤーを埋め込むことができます -->
+                    <!--</video> -->
 
           
             </div><!-- page_login content end   -->
@@ -159,16 +199,6 @@
 
 
 
-    <div id="page2" data-role="page">
-        <header data-role="header">
-            <h1>2ページ目</h1>
-        </header>
-        <div data-role="content">
-
-
-            <p>このページは2ページ目です。</p>
-            <a href="#page_login" data-role="button">1ページ目へ戻る</a>
-        </div>
-    </div>
+</div>
 </body>
 </html>
