@@ -336,7 +336,7 @@ public class MainActivity extends ActionBarActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        tts.shutdown();
+        //tts.shutdown();
         // 音声認識サービスの終了
         sListItemManager = null;
         //mCamera.release();

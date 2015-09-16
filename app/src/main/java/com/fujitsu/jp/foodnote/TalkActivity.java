@@ -1,12 +1,16 @@
 package com.fujitsu.jp.foodnote;
 
+import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
+import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
 import android.support.v7.app.ActionBarActivity;
 import android.text.SpannableStringBuilder;
@@ -24,17 +28,21 @@ import android.widget.ScrollView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
-
-
-
+import java.util.HashMap;
+import java.util.Timer;
+import java.util.TimerTask;
 
 
 //20150615_kawai implementsにTextToSpeech.OnInitListenerを追加
-public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnInitListener{
+public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnInitListener, RecognitionListener {
 
     // = 0 の部分は、適当な値に変更してください（とりあえず試すには問題ないですが）
     private static final int REQUEST_CODE = 0;
 
+
+    //Robot MODE
+    private static final int NORMAL = 0;
+    private static final int TIME = 1;
 
     private TextToSpeech tts;
 
@@ -49,6 +57,7 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
     private ActionHandler act;
 
     private MyAsyncTask task;
+    private MyAsyncTask reload;
     private String res = null;
 
 
@@ -72,7 +81,10 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
     private String projectID;
     private String userID;
 
+    HashMap<String, String> ttsparam;
 
+    private SpeechRecognizer mSpeechRecognizer;//20150916 yokoi
+    private ImageButton button;
 
     //20150615_kawai TextToSpeach用　onInit()でインスタンスの初期化ステータスを取得--ここから--
     //of. https://akira-watson.com/android/tts.html
@@ -115,13 +127,91 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
 
 
         //ボタンの押した動作
-        ImageButton button = (ImageButton) findViewById(R.id.talk);
+        //ImageButton button = (ImageButton) findViewById(R.id.talk);
+        button = (ImageButton) findViewById(R.id.talk);
 
         //テストの押した動作
         Button send = (Button) findViewById(R.id.send);
 
         //TTSの初期化
-        tts = new TextToSpeech(context, this);
+        //tts = new TextToSpeech(context, this);
+
+        //2015/09/16 yokoi ダイアログ非表示音声認識
+        mSpeechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+        mSpeechRecognizer.setRecognitionListener(this);
+
+        //CompleteEvent 2015/09/15 yokoi
+        tts = new TextToSpeech(context, new TextToSpeech.OnInitListener() {
+            public void onInit(int status) {
+                // 発話終了のListnerを登録
+                tts.setOnUtteranceCompletedListener(new TextToSpeech.OnUtteranceCompletedListener() {
+                    @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1)
+                    public void onUtteranceCompleted(String utteranceId) {
+                       //listening();
+                        try {
+                            Thread.sleep(1200);
+
+                            // サブスレッドで実行するタスクを作成
+                            task = new MyAsyncTask() {
+                                @Override
+                                protected String doInBackground(String... params) {
+                                    return res;
+                                }
+                                @Override
+                                protected void onPostExecute(String json_org) {
+                                    button.performClick();//ボタン押下のエミュレート
+                                }
+                            };
+
+                            //task.setActivity(this);
+                            task.execute( "" );
+
+                        }
+                        catch(Exception e){
+                            e.printStackTrace();
+                        }
+                    }
+                });
+            }
+        });
+        //SET UTTERANCE_ID
+        String UTTERANCE_ID = "1";
+        ttsparam = new HashMap<String, String>();
+        ttsparam.put(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, UTTERANCE_ID);
+
+
+        //resの常時リロード
+        Timer mTimer   = new Timer(true);;            //onClickメソッドでインスタンス生成
+        mTimer.schedule( new TimerTask(){
+            @Override
+            public void run() {
+
+                // サブスレッドで実行するタスクを作成
+                reload = new MyAsyncTask() {
+                    @Override
+                    protected String doInBackground(String... params) {
+                        SendHttpRequest http = new SendHttpRequest();
+                        String json_org = http.sendRequestToGarako(projectID);
+
+                        return res;
+                    }
+                    @Override
+                    protected void onPostExecute(String json_org) {
+                        res = json_org;
+                        //Toast.makeText(TalkActivity.this, "リロード", Toast.LENGTH_LONG).show();
+
+                        //タイマーイベント監視
+                        //会話から実行
+                        executeRobot("time", TIME);
+                    }
+                };
+                reload.execute("");
+            }
+        }, 5000, 5000);
+
+
+
+
 
         //トグルボタン（顔認識のON/OFF）
         //ToggleButton tglbtn = (ToggleButton) findViewById(R.id.toggleButton);
@@ -156,56 +246,18 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
 
 
 
-
-
-//20150616_kawai　ぐるぐる不要なためコメントアウト--ここから--
-        //ぐるぐる
-        /*
-        progressBar = new ProgressDialog(this);
-        progressBar.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-        progressBar.setMessage("処理を実行中しています");
-        progressBar.setCancelable(true);
-        progressBar.show();
-*/
-//20150616_kawai　ぐるぐる不要なためコメントアウト--ここまで--
-
-
-
         //20150617_kawai マイクボタン用の動作をコピペ--ここから--
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
 
+                listening();
 
-                try {
-                    // インテント作成
-                    Intent intent = new Intent(
-                            RecognizerIntent.ACTION_RECOGNIZE_SPEECH); // ACTION_WEB_SEARCH
-                    intent.putExtra(
-                            RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-                    intent.putExtra(
-                            RecognizerIntent.EXTRA_PROMPT,
-                            "Let's say!"); // お好きな文字に変更できます
-
-
-                    intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);// 取得する結果の数
-
-
-                    // インテント発行
-                    startActivityForResult(intent, REQUEST_CODE);
-                } catch (ActivityNotFoundException e) {
-                    // このインテントに応答できるアクティビティがインストールされていない場合
-                    Toast.makeText(TalkActivity.this,
-                            "ActivityNotFoundException", Toast.LENGTH_LONG).show();
-                }
             }
         });
 
 
 //20150617_kawai マイクボタン用の動作をコピペ--ここまで--
-
-
 
 
         //20150615_kawai sendボタン用の動作をコピペ--ここから--
@@ -225,32 +277,165 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
                 }
                 else {
                     txt.setText("");
-                    executeRobot(str);
+                    executeRobot(str, NORMAL);
                 }
             }
         });
         //20150615_kawai sendボタン用の動作をコピペ--ここまで--
 
-
-
-
-
-
-
-/*
-
-        //WebView UI Load
-        wb = (WebView) findViewById(R.id.webView);
-        //Javascript有効化
-        wb.getSettings().setJavaScriptEnabled(true);
-        //Javascript Interface add
-        wb.addJavascriptInterface(new WebViewJavascriptInterface(this), "Android");
-        //WebVeiwの表示設定
-        wb.loadUrl("file:///android_asset/index.html");
-        //wb.loadUrl("file:///android_asset/index_test.html");
-*/
-
     }
+
+    public void listening2(){
+        try {
+            // インテント作成
+            Intent intent = new Intent(
+                    RecognizerIntent.ACTION_RECOGNIZE_SPEECH); // ACTION_WEB_SEARCH
+            intent.putExtra(
+                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            intent.putExtra(
+                    RecognizerIntent.EXTRA_PROMPT,
+                    "Let's say!"); // お好きな文字に変更できます
+
+
+            intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);// 取得する結果の数
+
+
+            // インテント発行
+            startActivityForResult(intent, REQUEST_CODE);
+
+
+        } catch (ActivityNotFoundException e) {
+            // このインテントに応答できるアクティビティがインストールされていない場合
+            Toast.makeText(TalkActivity.this,
+                    "ActivityNotFoundException", Toast.LENGTH_LONG).show();
+        }
+    }
+
+
+    //============================= start SpeechRecognizer ============================
+    public void listening(){
+
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+        RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+
+        intent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE,
+                getPackageName());
+
+        intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);// 取得する結果の数
+
+        mSpeechRecognizer.startListening(intent);
+    }
+
+    // 音声認識準備完了
+    @Override
+    public void onReadyForSpeech(Bundle params) {
+        Toast.makeText(this, "お話しどうぞ", Toast.LENGTH_SHORT).show();
+    }
+
+    // 音声入力開始
+    @Override
+    public void onBeginningOfSpeech() {
+        Toast.makeText(this, "認識中・・・", Toast.LENGTH_SHORT).show();
+        //iv.setImageResource(R.drawable.listen);
+    }
+
+    // 録音データのフィードバック用
+    @Override
+    public void onBufferReceived(byte[] buffer) {
+        //Log.v(LOGTAG,"onBufferReceived");
+    }
+
+    // 入力音声のdBが変化した
+    @Override
+    public void onRmsChanged(float rmsdB) {
+        //Log.v(LOGTAG,"recieve : " + rmsdB + "dB");
+    }
+
+    // 音声入力終了
+    @Override
+    public void onEndOfSpeech() {
+        //Toast.makeText(this, "認識完了", Toast.LENGTH_SHORT).show();
+    }
+
+    // ネットワークエラー又は、音声認識エラー
+    @Override
+    public void onError(int error) {
+        switch (error) {
+            case SpeechRecognizer.ERROR_AUDIO:
+                // 音声データ保存失敗
+                break;
+            case SpeechRecognizer.ERROR_CLIENT:
+                // Android端末内のエラー(その他)
+                break;
+            case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS:
+                // 権限無し
+                break;
+            case SpeechRecognizer.ERROR_NETWORK:
+                // ネットワークエラー(その他)
+               //Log.e(LOGTAG, "network error");
+                break;
+            case SpeechRecognizer.ERROR_NETWORK_TIMEOUT:
+                // ネットワークタイムアウトエラー
+                //Log.e(LOGTAG, "network timeout");
+                break;
+            case SpeechRecognizer.ERROR_NO_MATCH:
+                // 音声認識結果無し
+                Toast.makeText(this, "もう一回マイクボタンを押してね！", Toast.LENGTH_LONG).show();
+                break;
+            case SpeechRecognizer.ERROR_RECOGNIZER_BUSY:
+                // RecognitionServiceへ要求出せず
+                break;
+            case SpeechRecognizer.ERROR_SERVER:
+                // Server側からエラー通知
+                break;
+            case SpeechRecognizer.ERROR_SPEECH_TIMEOUT:
+                // 音声入力無し
+                Toast.makeText(this, "no input?", Toast.LENGTH_LONG).show();
+                break;
+            default:
+        }
+    }
+
+    // イベント発生時に呼び出される
+    @Override
+    public void onEvent(int eventType, Bundle params) {
+        //Log.v(LOGTAG,"onEvent");
+    }
+
+    // 部分的な認識結果が得られる場合に呼び出される
+    @Override
+    public void onPartialResults(Bundle partialResults) {
+        //Log.v(LOGTAG,"onPartialResults");
+    }
+
+    // 認識結果
+    @Override
+    public void onResults(Bundle results) {
+        ArrayList<String> recData = results
+                .getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+
+        String getData = new String();
+        for (String s : recData) {
+            //getData += s + ",";
+            getData += s;
+            break;//1ループのみ
+        }
+
+        Toast.makeText(this, getData, Toast.LENGTH_SHORT).show();
+
+        //会話から実行
+        executeRobot( getData, NORMAL );
+    }
+
+    //============================= end SpeechRecognizer ============================
+
+    //============================= start events.jsのリロード処理 ============================
+
+    //============================= end events.jsのリロード処理 ============================
+
+
 
 
     // アクティビティ終了時に呼び出される
@@ -280,12 +465,13 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
 
 
             //会話から実行
-            executeRobot( resultsString );
+            executeRobot( resultsString, NORMAL );
 
 
 
 
             super.onActivityResult(requestCode, resultCode, data);
+
         }
     }
 
@@ -366,9 +552,11 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
     /**
      * executeRobot
      */
-    private void executeRobot( String resultsString ){
+    private void executeRobot( String resultsString, int MODE ){
         String msg=resultsString;
-        act.startDialogue(resultsString);
+
+        if(MODE == NORMAL)
+            act.startDialogue(resultsString);
 
         //表示
         //20160616_kawai ぐるぐる不要なためコメントアウト
@@ -414,19 +602,28 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
 
 
                 act.setTts(this.getTts());
+                act.setTtsparam(ttsparam);
                 //act.setContext(context);
 
                 //----------------------------------
                 //-- JSONの振り分け処理
                 //----------------------------------
 
-                act.analyzeJson(resultsString, json_org);
+                switch(this.getMODE()) {
+                    case NORMAL:
+                        act.analyzeJson(resultsString, json_org) ;
+                    break;
 
+                    case TIME:
+                        act.analyzeJsonForTimer(resultsString, json_org);
+                        break;
+                }
             }
         };
 
         task.setActivity(this);
         task.setTts( this.tts);
+        task.setMODE(MODE);
         //アクションハンドラの生成
         //act = new ActionHandler( this );
         act.setContext(context);

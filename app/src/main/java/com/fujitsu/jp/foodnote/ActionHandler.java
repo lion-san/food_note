@@ -19,6 +19,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Calendar;
+import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -54,11 +56,13 @@ public class ActionHandler {
     String qCode=null;
 
     //20150831_kawai gFlagがTrueのとき、ゲーム中
-    Boolean gFlag=false;
+    Boolean gFlag = false;
 
     //20150831_kawai 正解数
     int score=0;
 
+    //20150915 会話終了検知
+    private HashMap<String, String> ttsparam;
 
 
     /**
@@ -73,14 +77,60 @@ public class ActionHandler {
         this.userID=userID;
     }
 
-    //20150622_kawai userIDを追加
+
+    /**
+     *
+     * @param resultsString
+     * @param json_org
+     */
+    synchronized protected void analyzeJsonForTimer( String resultsString, String json_org ) {
+
+        Calendar now = Calendar.getInstance(); //インスタンス化
+        int hh = now.get(now.HOUR_OF_DAY);//時を取得
+        int mm = now.get(now.MINUTE);     //分を取得
+
+        try {
+
+            JSONArray jsons = new JSONArray(json_org);
+
+            for (int i = 0; i < jsons.length(); i++) {
+                // 予報情報を取得
+                JSONObject event = jsons.getJSONObject(i);
+                // Event
+                String e = event.getString("event");
+                // Operator
+                String operator = event.getString("operator");
+                // 条件
+                String param = event.getString("param");
+
+                if(e.equals("time")) {
+                    //条件が一致(HH24:MI)
+                    if (param.equals(hh + "" + mm)) {
+
+                        this.executeAction(this.getActivity(), event.getJSONArray("actions"));
+
+                    }
+                }
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+
+        //20150622_kawai userIDを追加
+
+    /**
+     *
+     * @param resultsString
+     * @param json_org
+     */
     synchronized protected void analyzeJson( String resultsString, String json_org ){
 
 
         Boolean flg = false;
         String str = resultsString;//しゃべった内容
         //paramは条件
-
 
         try{
 
@@ -98,58 +148,63 @@ public class ActionHandler {
 
 
                 //条件の検査
-                if( operator.equals("==")){//完全一致の場合
+                switch (e){
 
-                    if(resultsString.equals( param )){
-                        //処理の実行
-                        this.executeAction(this.getActivity(), event.getJSONArray("actions"));
-                        flg = true;
-                    }
-                }
-                else if((param.equals(StaticParams.FACE_DETECT) && (face_ditect))){//顔検知の場合
-                    //処理の実行
-                    this.executeAction(this.getActivity(), event.getJSONArray("actions"));
-                    flg = true;
-                }
-                else {//部分一致の場合
+                    //言語一致
+                    case "say":
+                        if (operator.equals("==")) {//完全一致の場合
 
-                    //20150623_kawai クイズゲームのため追加 --ここから--
+                            if (resultsString.equals(param)) {
+                                //処理の実行
+                                this.executeAction(this.getActivity(), event.getJSONArray("actions"));
+                                flg = true;
+                            }
+                        } else if ((param.equals(StaticParams.FACE_DETECT) && (face_ditect))) {//顔検知の場合
+                            //処理の実行
+                            this.executeAction(this.getActivity(), event.getJSONArray("actions"));
+                            flg = true;
+                        } else {//部分一致の場合
 
-                    if (str.contains("クイズ")) {//クイズをキーワードにゲーム開始
-                        gFlag = true;
-                        score=0;
-                    }
+                            //20150623_kawai クイズゲームのため追加 --ここから--
 
-                    //20150831_kawai しゃべった内容にコードを追加
-                    if(qCode!=null){
-                        str=qCode+str;
-                    }
+                            if (str.contains("クイズ")) {//クイズをキーワードにゲーム開始
+                                gFlag = true;
+                                score = 0;
+                            }
 
-                    //20150623_kawai クイズゲームのため追加 --ここまで--
+                            //20150831_kawai しゃべった内容にコードを追加
+                            if (qCode != null) {
+                                str = qCode + str;
+                            }
 
-                    //20150622_kawai 正規表現を導入する--ここから--
-                    String regex = ".*"+param+".*";
+                            //20150623_kawai クイズゲームのため追加 --ここまで--
 
-                    Pattern p = Pattern.compile(regex);
-                    Matcher m = p.matcher(str);
+                            //20150622_kawai 正規表現を導入する--ここから--
+                            String regex = ".*" + param + ".*";
 
-                     if(m.find()){
+                            Pattern p = Pattern.compile(regex);
+                            Matcher m = p.matcher(str);
 
-                        this.executeAction(this.getActivity(), event.getJSONArray("actions"));
-                        flg = true;
-                    }
+                            if (m.find()) {
 
-                    //20160622_kawai 正規表現を導入する--ここまで--
+                                this.executeAction(this.getActivity(), event.getJSONArray("actions"));
+                                flg = true;
+                            }
 
-                    //20160622_kawai 正規表現を使用するためコメントアウト
-                    /*
-                    if(resultsString.indexOf(param) != -1){
-                        //処理の実行
-                        this.executeAction(this.getActivity(), event.getJSONArray("actions"));
-                        flg = true;
-                    }
-                    */
-                }
+                            //20160622_kawai 正規表現を導入する--ここまで--
+
+                            //20160622_kawai 正規表現を使用するためコメントアウト
+                        /*
+                        if(resultsString.indexOf(param) != -1){
+                            //処理の実行
+                            this.executeAction(this.getActivity(), event.getJSONArray("actions"));
+                            flg = true;
+                        }
+                        */
+                        }
+                   break;
+
+                }//end switch
 
                 //20150623 クイズゲームのため追加
                 if (flg){
@@ -160,7 +215,7 @@ public class ActionHandler {
             if(( !flg ) && (!resultsString.equals((StaticParams.FACE_DETECT)))) {
                 //Toast.makeText(activity, "何も該当しませんでした。", Toast.LENGTH_SHORT).show();
                 //doTalk(resultsString +"が理解できませんでした。意味を教えてください。");
-                Toast.makeText(activity, "Connecting to DoCoMo", Toast.LENGTH_SHORT).show();
+                //Toast.makeText(activity, "Connecting to DoCoMo", Toast.LENGTH_SHORT).show();
                 doDocomo(resultsString);
             }
 
@@ -335,7 +390,7 @@ public class ActionHandler {
      */
     synchronized private void doTalk( String param){
 
-        tts.speak(param, TextToSpeech.QUEUE_ADD, null);
+        tts.speak(param, TextToSpeech.QUEUE_ADD, ttsparam);
         //Toast.makeText(activity, param, Toast.LENGTH_SHORT).show();
 
         sListItemManager.setSpeechResult(param);
@@ -505,5 +560,13 @@ public class ActionHandler {
 
     public void setsListItemManager(ListItemManager sListItemManager) {
         this.sListItemManager = sListItemManager;
+    }
+
+    public HashMap<String, String> getTtsparam() {
+        return ttsparam;
+    }
+
+    public void setTtsparam(HashMap<String, String> ttsparam) {
+        this.ttsparam = ttsparam;
     }
 }

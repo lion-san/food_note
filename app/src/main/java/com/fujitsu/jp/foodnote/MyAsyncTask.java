@@ -12,6 +12,7 @@ public class MyAsyncTask extends AsyncTask<String, Void, String> {
     private String param;
     private Activity activity;
     private TextToSpeech tts;
+    private int MODE;
 
 
     /**
@@ -50,6 +51,14 @@ public class MyAsyncTask extends AsyncTask<String, Void, String> {
 
     public void setTts(TextToSpeech tts) {
         this.tts = tts;
+    }
+
+    public int getMODE() {
+        return MODE;
+    }
+
+    public void setMODE(int MODE) {
+        this.MODE = MODE;
     }
 }
 
