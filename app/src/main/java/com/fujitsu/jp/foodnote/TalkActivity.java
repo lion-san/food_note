@@ -6,6 +6,7 @@ import android.app.ProgressDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
+import android.hardware.Camera;
 import android.os.Build;
 import android.os.Bundle;
 import android.speech.RecognitionListener;
@@ -18,6 +19,8 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
 import android.webkit.WebView;
 import android.widget.Button;
@@ -28,7 +31,9 @@ import android.widget.ScrollView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -86,6 +91,18 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
     private SpeechRecognizer mSpeechRecognizer;//20150916 yokoi
     private ImageButton button;
 
+    //タイマー
+    private Timer mTimer;
+
+    /** カメラのハードウェアを操作する {@link android.hardware.Camera} クラスです。 */
+    private Camera mCamera;
+    /** カメラのプレビューを表示する {@link android.view.SurfaceView} です。 */
+    private SurfaceView mView;
+    private CameraOverlayView mCameraOverlayView;
+    private Date lasttime = null;
+    private Date starttime = null;
+
+
     //20150615_kawai TextToSpeach用　onInit()でインスタンスの初期化ステータスを取得--ここから--
     //of. https://akira-watson.com/android/tts.html
     @Override
@@ -125,6 +142,8 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
         //20150615_kawai 遷移元からの値の受け渡し-ここまで-
 
 
+        //カメラ
+        mView = (SurfaceView) findViewById(R.id.surfaceView);
 
         //ボタンの押した動作
         //ImageButton button = (ImageButton) findViewById(R.id.talk);
@@ -149,7 +168,7 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
                     public void onUtteranceCompleted(String utteranceId) {
                        //listening();
                         try {
-                            Thread.sleep(1200);
+                            Thread.sleep(800);
 
                             // サブスレッドで実行するタスクを作成
                             task = new MyAsyncTask() {
@@ -180,37 +199,8 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
         ttsparam.put(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, UTTERANCE_ID);
 
 
-        //resの常時リロード
-        Timer mTimer   = new Timer(true);;            //onClickメソッドでインスタンス生成
-        mTimer.schedule( new TimerTask(){
-            @Override
-            public void run() {
-
-                // サブスレッドで実行するタスクを作成
-                reload = new MyAsyncTask() {
-                    @Override
-                    protected String doInBackground(String... params) {
-                        SendHttpRequest http = new SendHttpRequest();
-                        String json_org = http.sendRequestToGarako(projectID);
-
-                        return res;
-                    }
-                    @Override
-                    protected void onPostExecute(String json_org) {
-                        res = json_org;
-                        //Toast.makeText(TalkActivity.this, "リロード", Toast.LENGTH_LONG).show();
-
-                        //タイマーイベント監視
-                        //会話から実行
-                        executeRobot("time", TIME);
-                    }
-                };
-                reload.execute("");
-            }
-        }, 5000, 5000);
-
-
-
+        //resの常時リロードのスケジュール
+        reloadSchedule(5000, 5000);
 
 
         //トグルボタン（顔認識のON/OFF）
@@ -283,6 +273,44 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
         });
         //20150615_kawai sendボタン用の動作をコピペ--ここまで--
 
+    }
+
+    public void reloadSchedule(int initDelay, int delay) {
+
+        if(mTimer != null)
+            mTimer.cancel();
+
+        mTimer   = new Timer(true);            //onClickメソッドでインスタンス生成
+        mTimer.schedule( new TimerTask(){
+            @Override
+            public void run() {
+
+                // サブスレッドで実行するタスクを作成
+                reload = new MyAsyncTask() {
+                    @Override
+                    protected String doInBackground(String... params) {
+                        SendHttpRequest http = new SendHttpRequest();
+                        String json_org = http.sendRequestToGarako(projectID);
+
+                        return json_org;
+                    }
+                    @Override
+                    protected void onPostExecute(String json_org) {
+                        res = json_org;
+                        //Toast.makeText(TalkActivity.this, "リロード", Toast.LENGTH_LONG).show();
+
+                        //タイマーイベント監視
+                        //会話から実行
+                        executeRobot("time", TIME);
+                    }
+                };
+                reload.execute("");
+            }
+        }, initDelay, delay);
+    }
+
+    public void cancelSchedule(){
+        mTimer.cancel();
     }
 
     public void listening2(){
@@ -427,14 +455,10 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
 
         //会話から実行
         executeRobot( getData, NORMAL );
+
     }
 
     //============================= end SpeechRecognizer ============================
-
-    //============================= start events.jsのリロード処理 ============================
-
-    //============================= end events.jsのリロード処理 ============================
-
 
 
 
@@ -468,8 +492,6 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
             executeRobot( resultsString, NORMAL );
 
 
-
-
             super.onActivityResult(requestCode, resultCode, data);
 
         }
@@ -477,77 +499,6 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
 
 
 
-
-//20150617_kawai initRobotはTalkActivityでは不要なためコメントアウト
-    /*
-
-    protected void initRobot ( String projectName ){
-        // サブスレッドで実行するタスクを作成
-        task = new MyAsyncTask() {
-            @Override
-            protected String doInBackground(String... params) {
-                String resultsString = params[0];
-                try {
-                    // Twitter フォロー実行
-                    SendHttpRequest http = new SendHttpRequest();
-                    String json_org = http.sendRequestToGarako( resultsString );
-
-                    res = json_org;//インスタンス変数にＪＳＯＮ(命令セット)をセット
-
-                    this.setParam(resultsString);
-
-                    //20150616_kawai ぐるぐる不要なためコメントアウト
-                   // progressBar.dismiss();//消去
-
-                    return json_org;
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    //Toast.makeText(this.getActivity(), "Network Busy!", Toast.LENGTH_SHORT).show();
-
-                }
-                return null;
-            }
-
-            @Override
-            protected void onPostExecute(String json_org) {
-                String ready = "コーチの準備ができました";
-                tts.speak(ready, TextToSpeech.QUEUE_FLUSH, null);
-                Toast.makeText(this.getActivity(), ready, Toast.LENGTH_SHORT).show();
-
-            }
-        };
-
-        try {
-
-            //20150615_kawai talk_windowへの画面遷移 --ここから--
-            //20150615_kawai インテントの生成
-
-            //ntent intent = new Intent();
-            //intent.setClassName("com.fujitsu.jp.foodnote", "com.fujitsu.jp.foodnote.SubActivity");
-
-
-
-
-
-            ///20150615_kawai talk_windowへの画面遷移 ここまで
-
-            //アクションハンドラの生成
-            //mainActivity
-            act = new ActionHandler(this);
-            task.setActivity(this);
-            task.setTts(this.tts);
-            act.setContext(context);
-            act.setsListItemManager(sListItemManager);
-            act.setsScrollView(sScrollView);
-
-            //非同期処理開始
-            task.execute( projectName );
-        }catch( Exception e){
-            e.printStackTrace();
-        }
-
-    }
-*/
 
     /**
      * executeRobot
@@ -615,7 +566,7 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
                     break;
 
                     case TIME:
-                        act.analyzeJsonForTimer(resultsString, json_org);
+                        act.analyzeJsonForTimer(resultsString, json_org, TalkActivity.this);
                         break;
                 }
             }
@@ -627,6 +578,7 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
         //アクションハンドラの生成
         //act = new ActionHandler( this );
         act.setContext(context);
+        act.setmCam(mCamera);
 
         task.execute( resultsString );
     }
@@ -685,4 +637,73 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
         }
         return false;
     }
+
+
+//--------------------------------------------------------------------------------
+//--- Camera -----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
+    @Override
+    protected void onPostCreate(Bundle savedInstanceState) {
+        super.onPostCreate(savedInstanceState);
+
+        //コールバック関数をセット
+        SurfaceHolder holder = mView.getHolder();
+        holder.addCallback(surfaceHolderCallback);
+        holder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+    }
+
+
+    /** カメラのコールバックです。 */
+    private SurfaceHolder.Callback surfaceHolderCallback = new SurfaceHolder.Callback() {
+
+        @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
+        @Override
+        public void surfaceCreated(SurfaceHolder holder) {
+
+            try {
+                // 生成されたとき
+                mCamera = Camera.open(1);
+
+                // リスナをセット  // 顔検出の開始
+                //mCamera.setFaceDetectionListener(faceDetectionListener);
+
+                //mCamera.stopFaceDetection();
+
+                // プレビューをセットする
+                mCamera.setPreviewDisplay(holder);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        public void surfaceChanged(SurfaceHolder holder, int format, int width,
+                                   int height) {
+            // 変更されたとき
+            Camera.Parameters parameters = mCamera.getParameters();
+            List<Camera.Size> previewSizes = parameters.getSupportedPreviewSizes();
+            Camera.Size previewSize = previewSizes.get(0);
+            //parameters.setPreviewSize(previewSize.width, previewSize.height);
+            parameters.setPreviewSize(640, 480);
+            // width, heightを変更する
+            mCamera.setParameters(parameters);
+            mCamera.startPreview();
+        }
+
+        @Override
+        public void surfaceDestroyed(SurfaceHolder holder) {
+            // 破棄されたとき
+            mCamera.release();
+            mCamera = null;
+        }
+
+    };
+
+
+//--------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
+
+
 }

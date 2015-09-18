@@ -3,11 +3,16 @@ package com.fujitsu.jp.foodnote;
 import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationManager;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.hardware.Camera;
 import android.os.AsyncTask;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.speech.tts.TextToSpeech;
 import android.view.View;
 import android.widget.EditText;
@@ -19,6 +24,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.regex.Matcher;
@@ -42,7 +50,7 @@ public class ActionHandler {
     private LinearLayout mBaseLayout;           // 会話表示のベースレイアウトオブジェクト
     private ListItemManager sListItemManager;
 
-
+    private Camera mCam;
 
     private Boolean face_ditect = false;
 
@@ -83,11 +91,13 @@ public class ActionHandler {
      * @param resultsString
      * @param json_org
      */
-    synchronized protected void analyzeJsonForTimer( String resultsString, String json_org ) {
+    synchronized protected void analyzeJsonForTimer( String resultsString, String json_org, TalkActivity act) {
 
         Calendar now = Calendar.getInstance(); //インスタンス化
         int hh = now.get(now.HOUR_OF_DAY);//時を取得
         int mm = now.get(now.MINUTE);     //分を取得
+
+        int count = 0;
 
         try {
 
@@ -104,13 +114,42 @@ public class ActionHandler {
                 String param = event.getString("param");
 
                 if(e.equals("time")) {
+
+                    //1回でも該当
+                    count++;
+
                     //条件が一致(HH24:MI)
-                    if (param.equals(hh + "" + mm)) {
+                    String h;
+                    if(hh < 10) {
+                        h = "0" + String.valueOf(hh);
+                    }
+                    else{
+                        h =  String.valueOf(hh);
+                    }
+
+                    String m;
+                    if(mm < 10) {
+                        m = "0" + String.valueOf(mm);
+                    }
+                    else{
+                        m =  String.valueOf(mm);
+                    }
+
+                    if (param.equals(h + m)) {
 
                         this.executeAction(this.getActivity(), event.getJSONArray("actions"));
 
+                        //繰り返し頻度を変える
+                        act.reloadSchedule(60000, 60000);
+
                     }
                 }
+            }
+
+            //カウントされない（タイマーイベント該当ない場合
+            if(count == 0){
+                //スケジュールを元に戻す
+                act.reloadSchedule(5000, 5000);
             }
         }catch (Exception e){
             e.printStackTrace();
@@ -131,6 +170,8 @@ public class ActionHandler {
         Boolean flg = false;
         String str = resultsString;//しゃべった内容
         //paramは条件
+
+        String log = "";
 
         try{
 
@@ -156,12 +197,12 @@ public class ActionHandler {
 
                             if (resultsString.equals(param)) {
                                 //処理の実行
-                                this.executeAction(this.getActivity(), event.getJSONArray("actions"));
+                                log = this.executeAction(this.getActivity(), event.getJSONArray("actions"));
                                 flg = true;
                             }
                         } else if ((param.equals(StaticParams.FACE_DETECT) && (face_ditect))) {//顔検知の場合
                             //処理の実行
-                            this.executeAction(this.getActivity(), event.getJSONArray("actions"));
+                            log = this.executeAction(this.getActivity(), event.getJSONArray("actions"));
                             flg = true;
                         } else {//部分一致の場合
 
@@ -187,7 +228,7 @@ public class ActionHandler {
 
                             if (m.find()) {
 
-                                this.executeAction(this.getActivity(), event.getJSONArray("actions"));
+                                log = this.executeAction(this.getActivity(), event.getJSONArray("actions"));
                                 flg = true;
                             }
 
@@ -210,7 +251,7 @@ public class ActionHandler {
                 if (flg){
                     break;
                 }
-            }
+            }// end of for
 
             if(( !flg ) && (!resultsString.equals((StaticParams.FACE_DETECT)))) {
                 //Toast.makeText(activity, "何も該当しませんでした。", Toast.LENGTH_SHORT).show();
@@ -218,12 +259,18 @@ public class ActionHandler {
                 //Toast.makeText(activity, "Connecting to DoCoMo", Toast.LENGTH_SHORT).show();
                 doDocomo(resultsString);
             }
+            else{//該当があった場合
+                //ログの出力
+                Log.sendLog(userID, "say", resultsString, log);
+            }
 
         } catch (JSONException e) {
             e.printStackTrace();
             Toast.makeText(activity, "Network Busy!", Toast.LENGTH_SHORT).show();
             return;
         }
+
+        //ログの出力
 
     }
 
@@ -233,10 +280,12 @@ public class ActionHandler {
      * 処理の実行
      * @param actions
      */
-    protected void executeAction( Activity act, JSONArray actions ) throws JSONException {
+    protected String executeAction( Activity act, JSONArray actions ) throws JSONException {
 
         //インスタンス変数にセット
         activity = act;
+
+        String ret = "";
 
         for(int i = 0; i < actions.length(); i++){
             JSONObject action = actions.getJSONObject(i);
@@ -256,16 +305,21 @@ public class ActionHandler {
             //actionに基づき動作
             //20150623_kawai クイズゲーム対応によりコメントアウト
            // exec(action.getString("action"),  action.getString("param"));
-            exec(action.getString("action"),  param);
+            ret += exec(action.getString("action"),  param);
 
         }
+
+        return ret;
     }
 
-    private void exec( String action, String param){
+    private String exec( String action, String param){
+
+        String str = "";
 
             switch (action) {
 
                 case "talk":
+                    str = param;
                     //20150622_kawai お名前機能を追加する--ここから--
 
                     if (param.contains("userID")) {
@@ -322,6 +376,7 @@ public class ActionHandler {
             }
 
 
+        return str;
 
     }
 
@@ -349,6 +404,9 @@ public class ActionHandler {
 
                 //雑談対話要求処理クラスにリクエストデータを渡し、レスポンスデータを取得する
                 resultData = dialogue.request(param1);
+
+                //ログ
+                Log.sendLog(userID, "doDocomo", resultsString, resultData.getYomi());
 
                 return resultData.getYomi();
                 }
@@ -443,13 +501,81 @@ public class ActionHandler {
     synchronized private void doCamera( ){
 
         try {
+
             // 画像取得
-            //mCam.takePicture(null, null, mPicJpgListener);
+            mCam.takePicture(null, null, mPicJpgListener);
+
         }
             catch (Exception e){
                 e.printStackTrace();
             }
     }
+
+    /**
+     * JPEG データ生成完了時のコールバック
+     */
+    private Camera.PictureCallback mPicJpgListener = new Camera.PictureCallback() {
+        synchronized  public void onPictureTaken(byte[] data, Camera camera) {
+            if (data == null) {
+                return;
+            }
+
+            String saveDir = Environment.getExternalStorageDirectory().getPath() + "/foodnote";
+
+            // SD カードフォルダを取得
+            File file = new File(saveDir);
+
+            // フォルダ作成
+            if (!file.exists()) {
+                if (!file.mkdir()) {
+                    android.util.Log.e("Debug", "Make Dir Error");
+                }
+            }
+
+            // 画像保存パス
+            Calendar cal = Calendar.getInstance();
+            SimpleDateFormat sf = new SimpleDateFormat("yyyyMMdd_HHmmss");
+            String imgPath = saveDir + "/" + sf.format(cal.getTime()) + ".jpg";
+
+            // ファイル保存
+            FileOutputStream fos;
+            try {
+                fos = new FileOutputStream(imgPath, true);
+                fos.write(data);
+                fos.close();
+
+                // アンドロイドのデータベースへ登録
+                // (登録しないとギャラリーなどにすぐに反映されないため)
+                registAndroidDB(imgPath);
+
+            } catch (Exception e) {
+                android.util.Log.e("Debug", e.getMessage());
+            }
+
+            fos = null;
+
+            // takePicture するとプレビューが停止するので、再度プレビュースタート
+            mCam.startPreview();
+
+            // mIsTake = false;
+        }
+    };
+
+    /**
+     * アンドロイドのデータベースへ画像のパスを登録
+     * @param path 登録するパス
+     */
+    private void registAndroidDB(String path) {
+        // アンドロイドのデータベースへ登録
+        // (登録しないとギャラリーなどにすぐに反映されないため)
+        ContentValues values = new ContentValues();
+        ContentResolver contentResolver = context.getContentResolver();
+        values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+        values.put("_data", path);
+        contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+    }
+
+
 
     /**
      *
@@ -569,4 +695,13 @@ public class ActionHandler {
     public void setTtsparam(HashMap<String, String> ttsparam) {
         this.ttsparam = ttsparam;
     }
+
+    public Camera getmCam() {
+        return mCam;
+    }
+
+    public void setmCam(Camera mCam) {
+        this.mCam = mCam;
+    }
+
 }

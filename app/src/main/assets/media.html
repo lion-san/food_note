@@ -6,16 +6,41 @@
 
     <script language="JavaScript">
         var load_audio = function(url){
-          document.getElementById("audio").src = url
 
-          var audio = new Audio(url);
-          audio.load();
-          audio.play();
+          var youtube = document.getElementById("youtube");
+          var media = document.getElementById("audio");
+
+
+          //MP3かyoutubeの判定
+          if(url.indexOf("youtube") != -1) {
+            youtube.style.display = "block";
+            //audio.style.display = "none";
+
+            document.getElementById("youtube").src = (url + "?rel=0&autoplay=1");
+          }
+          //MP3の後方一致
+          else if((url + " ").indexOf(".wav ") != -1){
+
+              //var obj =  document.getElementById("audio");
+              //obj.style.display = "inline";
+               youtube.style.display = "none";
+               //audio.style.display = "block";
+
+              //document.getElementById("audio").src = url
+              media.src = url
+
+              var audio = new Audio(url);
+              audio.load();
+              audio.play();
+          }
         }
     </script>
 
 </head>
 <body>
   <audio id="audio" src="" controls autoplay></audio>
+
+  <iframe style="display:none" id="youtube" width="560" height="315" src="" frameborder="0" ></iframe>
+
 </body>
 </html>

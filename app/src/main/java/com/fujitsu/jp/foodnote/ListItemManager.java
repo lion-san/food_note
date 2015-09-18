@@ -415,6 +415,12 @@ public class ListItemManager {
             WebSettings settings = wv.getSettings();
             settings.setJavaScriptEnabled(true);
 
+            //2015/09/18
+            int SDK_INT = android.os.Build.VERSION.SDK_INT;
+            if (SDK_INT > 16) {
+                view.getSettings().setMediaPlaybackRequiresUserGesture(false);
+            }
+
             // HTML内に埋め込まれている「callJavaScript()」関数を呼び出す
             //wv.loadUrl("javascript:callJavaScript()");
             //wv.evaluateJavascript("javascript:load_movie(" + text + ")", null);
