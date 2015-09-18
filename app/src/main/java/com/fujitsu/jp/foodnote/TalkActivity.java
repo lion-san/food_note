@@ -168,7 +168,7 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
                     public void onUtteranceCompleted(String utteranceId) {
                        //listening();
                         try {
-                            Thread.sleep(800);
+                            Thread.sleep(500);
 
                             // サブスレッドで実行するタスクを作成
                             task = new MyAsyncTask() {

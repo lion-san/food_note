@@ -14,17 +14,15 @@
           //MP3かyoutubeの判定
           if(url.indexOf("youtube") != -1) {
             youtube.style.display = "block";
-            //audio.style.display = "none";
+            media.style.display = "none";
 
             document.getElementById("youtube").src = (url + "?rel=0&autoplay=1");
           }
           //MP3の後方一致
-          else if((url + " ").indexOf(".wav ") != -1){
+          else if(((url + " ").indexOf(".wav ") != -1) || ((url + " ").indexOf(".mp3 ") != -1)){
 
-              //var obj =  document.getElementById("audio");
-              //obj.style.display = "inline";
                youtube.style.display = "none";
-               //audio.style.display = "block";
+               media.style.display = "block";
 
               //document.getElementById("audio").src = url
               media.src = url
