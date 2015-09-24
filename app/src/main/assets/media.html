@@ -9,12 +9,14 @@
 
           var youtube = document.getElementById("youtube");
           var media = document.getElementById("audio");
+          var gazo = document.getElementById("gazo");
 
 
           //MP3かyoutubeの判定
           if(url.indexOf("youtube") != -1) {
             youtube.style.display = "block";
             media.style.display = "none";
+            gazo.style.display = "none";
 
             document.getElementById("youtube").src = (url + "?rel=0&autoplay=1");
           }
@@ -23,6 +25,7 @@
 
                youtube.style.display = "none";
                media.style.display = "block";
+               gazo.style.display = "none";
 
               //document.getElementById("audio").src = url
               media.src = url
@@ -31,6 +34,16 @@
               audio.load();
               audio.play();
           }
+          //画像ファイル(*.jpg,*.jpeg,*.png,*.gif)の後方一致
+          else if(((to_lower(url) + " ").indexOf(".jpg ") != -1) || ((to_lower(url) + " ").indexOf(".jpeg ") != -1)  || ((to_lower(url) + " ").indexOf(".png ") != -1) || ((to_lower(url) + " ").indexOf(".gif ") != -1)){
+               media.style.display = "none";
+               youtube.style.display = "none";
+               gazo.src = url;
+          }
+        }
+
+        var to_lower = function(str){
+            return str.toLowerCase();
         }
     </script>
 
@@ -39,6 +52,8 @@
   <audio id="audio" src="" controls autoplay></audio>
 
   <iframe style="display:none" id="youtube" width="560" height="315" src="" frameborder="0" ></iframe>
+
+  <img id="gazo" width="560" height="315">
 
 </body>
 </html>
