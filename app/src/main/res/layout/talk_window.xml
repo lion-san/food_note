@@ -27,7 +27,7 @@
             android:layout_height="fill_parent"
             android:background="@android:color/transparent"
             android:scaleType="fitXY"
-            android:src="@drawable/btn_mic"
+            android:src="@drawable/btn_mic_off"
             android:layout_alignParentBottom="true"
             android:layout_centerHorizontal="true" />
 

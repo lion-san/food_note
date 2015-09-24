@@ -145,12 +145,13 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
         //カメラ
         mView = (SurfaceView) findViewById(R.id.surfaceView);
 
-        //ボタンの押した動作
+        //発話ボタン
         //ImageButton button = (ImageButton) findViewById(R.id.talk);
         button = (ImageButton) findViewById(R.id.talk);
 
         //テストの押した動作
         Button send = (Button) findViewById(R.id.send);
+
 
         //TTSの初期化
         //tts = new TextToSpeech(context, this);
@@ -359,6 +360,7 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
     // 音声認識準備完了
     @Override
     public void onReadyForSpeech(Bundle params) {
+        button.setImageResource(R.drawable.btn_mic_on_red);
         Toast.makeText(this, "お話しどうぞ", Toast.LENGTH_SHORT).show();
     }
 
@@ -390,6 +392,10 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
     // ネットワークエラー又は、音声認識エラー
     @Override
     public void onError(int error) {
+
+        //ボタンを元に戻す
+        button.setImageResource(R.drawable.btn_mic_on);
+
         switch (error) {
             case SpeechRecognizer.ERROR_AUDIO:
                 // 音声データ保存失敗
@@ -451,6 +457,7 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
             break;//1ループのみ
         }
 
+        button.setImageResource(R.drawable.btn_mic_on);
         Toast.makeText(this, getData, Toast.LENGTH_SHORT).show();
 
         //会話から実行
