@@ -89,7 +89,7 @@
 
                         //var index =Number(data[i].id) % 5;
 
-                         c="<input type=\"image\" src=\""+imageList[data[i].pjname]+"\" class=\"img-responsive\"   name=\""+ data[i].pjname +" \" value=\""+ data[i].pjname +"\" onClick=\"clickIcon(\'"+data[i].id+"\',\'"+data[i].pjname+"\',\'"+userID+"\');\">" ;
+                         c="<input type=\"image\" src=\""+imageList[data[i].pjname]+"\" class=\"img-responsive\"   name=\""+ data[i].pjname +" \" value=\""+ data[i].pjname +"\" onClick=\"clickIcon(\'"+data[i].id+"\',\'"+data[i].pjname+"\',\'"+userID+"\');\"><label>" + data[i].pjname + "</labe>" ;
 
                          $('#project_list').append(c);
                         }
