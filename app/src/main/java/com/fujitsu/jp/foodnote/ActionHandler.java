@@ -331,7 +331,13 @@ public class ActionHandler {
                     //20150623_kawai クイズゲーム機能
                     //20150827_kawai elseはクイズに無関係のとき
 
-                    if(gFlag){
+                    String regex = "Q[0-9][0-9][0-9]:";
+                    Pattern p = Pattern.compile(regex);
+                    Matcher m1 = p.matcher(param.substring(0,5));
+
+
+
+                    if((gFlag) && (m1.find())){
                         qCode=param.substring(0,5);
                         param=param.replace(qCode,"");
                         if(param.contains("正解") && !param.contains("はずれ")) {
