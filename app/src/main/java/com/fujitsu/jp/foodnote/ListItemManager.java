@@ -412,7 +412,7 @@ public class ListItemManager {
         @Override
         public void onPageFinished(WebView view, String url) {
 
-            WebSettings settings = wv.getSettings();
+            WebSettings settings = view.getSettings();
             settings.setJavaScriptEnabled(true);
 
             //2015/09/18
@@ -427,7 +427,7 @@ public class ListItemManager {
             //wv.getSettings().setJavaScriptEnabled(true);
             //String script = "javascript:load_movie('%s');";
             String script = "javascript:load_audio('%s');";
-            wv.loadUrl( String.format( script, text ) );
+            view.loadUrl( String.format( script, text ) );
         }
     }
 }
