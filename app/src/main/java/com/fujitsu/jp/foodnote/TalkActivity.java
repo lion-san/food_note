@@ -493,8 +493,6 @@ public class TalkActivity extends ActionBarActivity implements TextToSpeech.OnIn
             Toast.makeText(this, resultsString, Toast.LENGTH_LONG).show();
 
 
-
-
             //会話から実行
             executeRobot( resultsString, NORMAL );
 
