@@ -477,6 +477,9 @@ public class ActionHandler {
 
     /**
      * スクロールビューを一番下まで自動スクロールさせる。
+     * 少し待ち時間をつくることで、通信している感をだす。
+     * しかし、スクロールが遅いので、即時スクロールに変更2015/10/2
+     *
      */
     public void scrollToBottom() {
         AsyncTask<Void, Void, Boolean> waitScroll = new AsyncTask<Void, Void, Boolean>() {
@@ -501,7 +504,13 @@ public class ActionHandler {
                 txt.requestFocus();
             };
         };
-        waitScroll.execute();
+        //waitScroll.execute();
+
+        //即時スクロール対応
+        sScrollView.fullScroll(View.FOCUS_DOWN);
+        //テキストにフォーカス
+        EditText txt = (EditText) activity.findViewById(R.id.editText);
+        txt.requestFocus();
     }
 
     synchronized private void doCamera( ){
